@@ -10,32 +10,7 @@
 
 using json = nlohmann::json;
 
-cv::Mat add_row_noise(cv::Mat img, double stddev, double mean) {
-	int height = img.rows;
-	int width = img.cols;
-
-	cv::Mat out = cv::Mat::zeros(height, width, CV_8UC1);
-
-	std::random_device seed;
-	std::mt19937 engine(seed());
-
-	std::normal_distribution<> dist(mean, stddev);
-
-	std::vector<double> row_noise_list(height);
-	for (int i = 0; i < height; i++) {
-		row_noise_list[i] = dist(engine);
-	}
-
-	int i = 0;
-	for(int y = 0; y < height; y++) {
-		for(int x = 0; x < width; x++) {
-			out.at<char>(y, x) = (char)(img.at<char>(y, x) + row_noise_list[i]);
-		}
-		i++;
-	}
-
-	return out;
-}
+cv::Mat add_row_noise(cv::Mat, double, double);
 
 int main(int argc, char *argv[]) {
 
@@ -60,17 +35,54 @@ int main(int argc, char *argv[]) {
 	std::string json_str(it, last);
 	json jobj = json::parse(json_str);
 
-	int height = 1000;
-	int width = 1000;
-	cv::Mat img = cv::Mat::zeros(height, width, CV_8UC1);
-	cv::Mat noisy_img = add_row_noise(img, 10.0, 100.0);
+	int height = 480;
+	int width = 640;
+	cv::Mat img = cv::Mat::zeros(height, width, CV_16U);
+	cv::Mat noisy_img = add_row_noise(img, 100.0, 500.0);
 
+	// check some pixels value 
+	for (int i = 0; i < 10; i++) {
+		std::cout << noisy_img.at<uint16_t>(i, i) << std::endl;
+	}
+
+	cv::imwrite("output.png", noisy_img);
 	cv::imshow("", noisy_img);
 	cv::waitKey(0);
 
-	//cv::imwrite("", out);
 
 	cv::destroyAllWindows();
 
 	return 0;
 }
+
+cv::Mat add_row_noise(cv::Mat img, double stddev, double mean) {
+	int height = img.rows;
+	int width = img.cols;
+
+	cv::Mat out = cv::Mat::zeros(height, width, CV_16U);
+
+	std::random_device seed;
+	std::mt19937 engine(seed());
+
+	std::normal_distribution<> dist(mean, stddev);
+
+	std::vector<double> row_noise_list(height);
+	for (int y = 0; y < height; y++) {
+		row_noise_list[y] = dist(engine);
+	}
+
+	for(int y = 0; y < height; y++) {
+		for(int x = 0; x < width; x++) {
+			double pix_value = img.at<uint16_t>(y, x) + row_noise_list[y];
+			if (pix_value > 1023) {
+				pix_value = 1023;
+			} else if (pix_value < 0) {
+				pix_value = 0;
+			}
+			out.at<uint16_t>(y, x) = (uint16_t)(pix_value);
+		}
+	}
+
+	return out;
+}
+
