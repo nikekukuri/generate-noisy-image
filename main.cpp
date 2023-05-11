@@ -12,6 +12,46 @@ using json = nlohmann::json;
 
 cv::Mat add_row_noise(cv::Mat, double, double);
 
+class ParseCondition {
+public:
+	ParseCondition(int n):
+		n_(n) {
+			std::vector<int> gain_list_(n);
+		}
+
+	void parse(std::string filename) {
+		std::ifstream ifs(filename);
+		if (ifs.fail()) {
+			std::cerr << "[Error main.cpp] do not read `settings.json`" << std::endl;
+		}
+
+		std::istreambuf_iterator<char> it(ifs);
+		std::istreambuf_iterator<char> last;
+		std::string json_str(it, last);
+		json jobj_ = json::parse(json_str);
+		for (auto x : jobj_["gain"]) {
+			gain_list_.push_back(x);
+		}
+	}
+
+	void print() {
+		std::cout << "[DEBUG] json parse :";
+		for (int i = 0; i < n_; i++) {
+			std::cout << gain_list_[i] << " ";
+		}
+		std::cout << std::endl;
+	}
+
+	std::vector<int> getGainList() { return gain_list_; }
+
+private:
+	std::vector<int> gain_list_;
+	int n_;
+	json jobj_;
+
+
+};
+
 int main(int argc, char *argv[]) {
 
 	if(argc < 2) {
@@ -23,34 +63,22 @@ int main(int argc, char *argv[]) {
 	}
 
 	std::string filename = argv[1];
-	std::ifstream ifs(filename);
 
-	if (ifs.fail()) {
-		std::cerr << "[Error main.cpp] do not read `settings.json`" << std::endl;
-		return -1;
-	}
-
-	std::istreambuf_iterator<char> it(ifs);
-	std::istreambuf_iterator<char> last;
-	std::string json_str(it, last);
-	json jobj = json::parse(json_str);
+	ParseCondition cond(4);
+	cond.parse(filename);
+	cond.print();
 
 	int height = 480;
 	int width = 640;
 	cv::Mat img = cv::Mat::zeros(height, width, CV_16U);
-	cv::Mat noisy_img = add_row_noise(img, 100.0, 500.0);
+	img = add_row_noise(img, 100.0, 500.0);
 
-	// check some pixels value 
-	for (int i = 0; i < 10; i++) {
-		std::cout << noisy_img.at<uint16_t>(i, i) << std::endl;
-	}
-
-	cv::imwrite("output.png", noisy_img);
-	cv::imshow("", noisy_img);
-	cv::waitKey(0);
+	cv::imwrite("output.png", img);
+	//cv::imshow("", noisy_img);
+	//cv::waitKey(0);
 
 
-	cv::destroyAllWindows();
+	//cv::destroyAllWindows();
 
 	return 0;
 }
