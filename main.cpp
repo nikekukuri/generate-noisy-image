@@ -2,6 +2,7 @@
 #include <iostream>
 #include <random>
 #include <string>
+#include <tuple>
 #include <iterator>
 #include <nlohmann/json.hpp>
 
@@ -10,14 +11,27 @@
 
 using json = nlohmann::json;
 
-cv::Mat add_row_noise(cv::Mat, double, double);
+cv::Mat AddRowRandomNoise(cv::Mat, double, double);
+cv::Mat AddRowArchNoise(cv::Mat);
 
 class ParseCondition {
-public:
-	ParseCondition(int n):
-		n_(n) {
-			std::vector<int> gain_list_(n);
-		}
+ private:
+	int n_;
+	json jobj_;
+	int bit_;
+	std::vector<double> gain_vec_;
+	std::vector<double> sigma_row_vec_;
+	std::vector<double> sigma_all_vec_;
+	std::tuple<int, int> point_left_top_;
+	std::tuple<int, int> point_right_bottom_;
+	std::vector<double> profile_x_;
+	std::vector<double> profile_y_;
+	std::vector<double> conv_vec_;
+
+ public:
+	ParseCondition(int n): n_(n) {
+			std::vector<double> gain_vec_(n);
+	}
 
 	void parse(std::string filename) {
 		std::ifstream ifs(filename);
@@ -30,24 +44,19 @@ public:
 		std::string json_str(it, last);
 		json jobj_ = json::parse(json_str);
 		for (auto x : jobj_["gain"]) {
-			gain_list_.push_back(x);
+			gain_vec_.push_back(x);
 		}
 	}
 
 	void print() {
 		std::cout << "[DEBUG] json parse :";
 		for (int i = 0; i < n_; i++) {
-			std::cout << gain_list_[i] << " ";
+			std::cout << gain_vec_[i] << " ";
 		}
 		std::cout << std::endl;
 	}
 
-	std::vector<int> getGainList() { return gain_list_; }
-
-private:
-	std::vector<int> gain_list_;
-	int n_;
-	json jobj_;
+	std::vector<double> getGainList() { return gain_vec_; }
 
 
 };
@@ -70,8 +79,10 @@ int main(int argc, char *argv[]) {
 
 	int height = 480;
 	int width = 640;
-	cv::Mat img = cv::Mat::zeros(height, width, CV_16U);
-	img = add_row_noise(img, 100.0, 500.0);
+	int blacklevel = 500
+	cv::Mat img = cv::Mat::zeros(height, width, CV_16UC1);
+	img = img + blacklevel;
+	img = AddRowRandomNoise(img, 100.0, 0.0);
 
 	cv::imwrite("output.png", img);
 	//cv::imshow("", noisy_img);
@@ -83,11 +94,11 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-cv::Mat add_row_noise(cv::Mat img, double stddev, double mean) {
+cv::Mat AddRowRandomNoise(cv::Mat img, double stddev, double mean) {
 	int height = img.rows;
 	int width = img.cols;
 
-	cv::Mat out = cv::Mat::zeros(height, width, CV_16U);
+	cv::Mat out = cv::Mat::zeros(height, width, CV_16UC1);
 
 	std::random_device seed;
 	std::mt19937 engine(seed());
@@ -114,3 +125,12 @@ cv::Mat add_row_noise(cv::Mat img, double stddev, double mean) {
 	return out;
 }
 
+cv::Mat AddRowArchNoise(cv::Mat img) {
+	int height = img.rows;
+	int width = img.cols;
+
+	cv::Mat out = cv::Mat::zeros(height, width, CV_16UC1);
+	std::tuple<uint16_t, uint16_t> left_bottom = (100, 100);
+	std::tuple<uint16_t, uint16_t> left_bottom = (100, 100);
+	return out;
+}
